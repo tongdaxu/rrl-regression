@@ -1,7 +1,6 @@
 import os
 import argparse
 
-
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-d', '--data_set', type=str, default='tic-tac-toe',
                     help='Set the data set for training. All the data sets in the dataset folder are available.')
@@ -19,7 +18,7 @@ parser.add_argument('-rc', '--round_count', type=int, default=0, help='Count the
 parser.add_argument('-ma', '--master_address', type=str, default='127.0.0.1', help='Set the master address.')
 parser.add_argument('-mp', '--master_port', type=str, default='0', help='Set the master port.')
 parser.add_argument('-li', '--log_iter', type=int, default=500, help='The number of iterations (batches) to log once.')
-
+parser.add_argument('--regression', action="store_true", help='regression mode or not.')
 parser.add_argument('--nlaf', action="store_true",
                     help='Use novel logical activation functions to take less time and GPU memory usage. We recommend trying (alpha, beta, gamma) in {(0.999, 8, 1), (0.999, 8, 3), (0.9, 3, 3)}')
 parser.add_argument('--alpha', type=float, default=0.999, help='Set the alpha for NLAF.')
