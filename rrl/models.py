@@ -56,12 +56,15 @@ class Net(nn.Module):
             prev_layer_dim = layer.output_dim
             self.add_module(layer_name, layer)
             self.layer_list.append(layer)
+            # print("cfg: ", i, num, layer.output_dim, layer_name)
 
     def forward(self, x):
-        for layer in self.layer_list:
+        for l, layer in enumerate(self.layer_list):
+            
             if layer.conn.skip_from_layer is not None:
                 x = torch.cat((x, layer.conn.skip_from_layer.x_res), dim=1)
                 del layer.conn.skip_from_layer.x_res
+            # print("run: ", l + 1, x.shape, layer)
             x = layer(x)
             if layer.conn.is_skip_to_layer:
                 layer.x_res = x
@@ -368,7 +371,8 @@ class RRLRegression(RRL):
 
         accuracy_b = []
         f1_score_b = []
-
+        mae_b = []
+        # criterion = nn.L1Loss().cuda(self.device_id)
         criterion = nn.MSELoss().cuda(self.device_id)
         optimizer = torch.optim.Adam(self.net.parameters(), lr=lr, weight_decay=0.0)
 
@@ -419,9 +423,9 @@ class RRLRegression(RRL):
 
                 if self.is_rank0 and (cnt % (TEST_CNT_MOD * (1 if self.save_best else 10)) == 0):
                     if valid_loader is not None:
-                        acc_b, f1_b = self.test(test_loader=valid_loader, set_name='Validation')
+                        acc_b, f1_b, mae = self.test(test_loader=valid_loader, set_name='Validation')
                     else: # use the data_loader as the valid loader
-                        acc_b, f1_b = self.test(test_loader=data_loader, set_name='Training')
+                        acc_b, f1_b, mae = self.test(test_loader=data_loader, set_name='Training')
                     
                     if self.save_best and (f1_b > self.best_f1 or (np.abs(f1_b - self.best_f1) < 1e-10 and self.best_loss > epoch_loss_rrl)):
                         self.best_f1 = f1_b
@@ -430,9 +434,11 @@ class RRLRegression(RRL):
                     
                     accuracy_b.append(acc_b)
                     f1_score_b.append(f1_b)
+                    mae_b.append(mae)
                     if self.writer is not None:
                         self.writer.add_scalar('MSE_RRL', acc_b, cnt // TEST_CNT_MOD)
                         self.writer.add_scalar('R2_Score_RRL', f1_b, cnt // TEST_CNT_MOD)
+                        self.writer.add_scalar('MAE_RRL', mae, cnt // TEST_CNT_MOD)
             if self.is_rank0:
                 logging.info('epoch: {}, loss_rrl: {}'.format(epo, epoch_loss_rrl))
                 if self.writer is not None:
@@ -465,12 +471,14 @@ class RRLRegression(RRL):
             y_pred_b_list.append(output)
 
         y_pred_b = torch.cat(y_pred_b_list).cpu().numpy()
-        accuracy_b = metrics.mean_squared_error(y_true, y_pred_b)
+        accuracy_b = metrics.mean_squared_error(y_true, y_pred_b, squared=False)
         f1_score_b = metrics.r2_score(y_true, y_pred_b)
+        mae_b = metrics.mean_absolute_error(y_true, y_pred_b)
 
         logging.info('-' * 60)
         logging.info('On {} Set:\n\tMSE of RRL  Model: {}'
-                        '\n\tR2 Score of RRL  Model: {}'.format(set_name, accuracy_b, f1_score_b))
+                        '\n\tR2 Score of RRL  Model: {}'
+                        '\n\tMAE of RRL  Model: {}'.format(set_name, accuracy_b, f1_score_b, mae_b))
         logging.info('-' * 60)
 
-        return accuracy_b, f1_score_b
+        return accuracy_b, f1_score_b, mae_b

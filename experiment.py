@@ -48,7 +48,7 @@ def get_data_loader(dataset, world_size, rank, batch_size, k=0, pin_memory=False
     valid_loader = DataLoader(valid_set, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, pin_memory=pin_memory)
 
-    return db_enc, train_loader, valid_loader, test_loader
+    return db_enc, train_loader, train_loader, test_loader
 
 
 def train_model(gpu, args):
